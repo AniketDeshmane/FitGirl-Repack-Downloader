@@ -1,0 +1,47 @@
+# Build Windows exe and create GitHub Release on version tag push
+# Usage: tag and push to trigger (e.g. git tag v1.0.0 && git push origin v1.0.0)
+
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'   # e.g. v1.0.0, v1.0.1
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build executable
+        run: |
+          pyinstaller --onefile --windowed --name "FitGirl-Repack-Downloader" download_manager.py
+        shell: cmd
+
+      - name: Rename exe with version
+        run: |
+          $tag = "${{ github.ref_name }}"
+          Copy-Item "dist\FitGirl-Repack-Downloader.exe" "dist\FitGirl-Repack-Downloader-$tag.exe"
+        shell: pwsh
+
+      - name: Create Release and upload exe
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/FitGirl-Repack-Downloader-${{ github.ref_name }}.exe
+          generate_release_notes: true
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
