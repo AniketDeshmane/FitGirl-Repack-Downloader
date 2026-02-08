@@ -1,12 +1,14 @@
-# Build Windows exe and create GitHub Release on version tag push
-# Usage: tag and push to trigger (e.g. git tag v1.0.0 && git push origin v1.0.0)
+# Build Windows exe on every push to main; create GitHub Release when you push a version tag
+# Triggers: push to main (build + artifact) OR push tag v* (build + release)
 
 name: Build and Release
 
 on:
   push:
+    branches:
+      - main
     tags:
-      - 'v*'   # e.g. v1.0.0, v1.0.1
+      - 'v*'
 
 jobs:
   build-windows:
@@ -33,11 +35,19 @@ jobs:
 
       - name: Rename exe with version
         run: |
-          $tag = "${{ github.ref_name }}"
-          Copy-Item "dist\FitGirl-Repack-Downloader.exe" "dist\FitGirl-Repack-Downloader-$tag.exe"
+          $ver = "${{ github.ref_name }}"
+          Copy-Item "dist\FitGirl-Repack-Downloader.exe" "dist\FitGirl-Repack-Downloader-$ver.exe"
         shell: pwsh
 
-      - name: Create Release and upload exe
+      - name: Upload exe (branch build)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FitGirl-Repack-Downloader-${{ github.sha }}
+          path: dist/FitGirl-Repack-Downloader-${{ github.ref_name }}.exe
+
+      - name: Create Release and upload exe (tag only)
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: dist/FitGirl-Repack-Downloader-${{ github.ref_name }}.exe
